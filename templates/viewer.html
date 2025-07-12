@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Morphex - Viewer</title>
+    <style>
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: sans-serif;
+        background: black;
+      }
+      #canvas-container {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/examples/js/libs/draco/draco_decoder.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.145.0/examples/js/loaders/DRACOLoader.js"></script>
+  </head>
+  <body>
+    <div id="canvas-container"></div>
+
+    <script>
+      const container = document.getElementById("canvas-container");
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x111111);
+      container.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        10000
+      );
+      camera.position.set(0, 0, 5);
+
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.target.set(0, 0, 0);
+      controls.update();
+
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+
+      const dracoLoader = new THREE.DRACOLoader();
+      dracoLoader.setDecoderPath(
+        "https://cdn.jsdelivr.net/npm/three@0.145.0/examples/js/libs/draco/"
+      );
+
+      let currentPoints = null;
+
+      async function loadDRCFromServer(path) {
+        const response = await fetch(path);
+        if (!response.ok) throw new Error("Failed to fetch .drc file");
+
+        const drcBuffer = await response.arrayBuffer();
+
+        dracoLoader.decodeDracoFile(drcBuffer, (geometry) => {
+          geometry.computeBoundingBox();
+
+          if (geometry.attributes.color) {
+            const colorAttr = geometry.attributes.color;
+            const array = colorAttr.array;
+            const itemSize = colorAttr.itemSize;
+
+            const normalizedColors = new Float32Array(array.length);
+            for (let i = 0; i < array.length; i++) {
+              normalizedColors[i] = array[i] / 255;
+            }
+
+            geometry.setAttribute(
+              "color",
+              new THREE.BufferAttribute(normalizedColors, itemSize)
+            );
+          }
+
+          const material = new THREE.PointsMaterial({
+            size: 0.05,
+            vertexColors: true,
+          });
+
+          const points = new THREE.Points(geometry, material);
+
+          if (currentPoints) {
+            scene.remove(currentPoints);
+            currentPoints.geometry.dispose();
+            currentPoints.material.dispose();
+          }
+
+          scene.add(points);
+          currentPoints = points;
+
+          const bbox = geometry.boundingBox;
+          const center = new THREE.Vector3();
+          bbox.getCenter(center);
+          controls.target.copy(center);
+
+          const size = new THREE.Vector3();
+          bbox.getSize(size);
+          const maxDim = Math.max(size.x, size.y, size.z);
+          const fov = camera.fov * (Math.PI / 180);
+          const distance = maxDim / (2 * Math.tan(fov / 2));
+
+          camera.position.copy(
+            center.clone().add(new THREE.Vector3(0, 0, distance * 1.5))
+          );
+          camera.near = distance / 100;
+          camera.far = distance * 10;
+          camera.updateProjectionMatrix();
+          controls.update();
+        });
+      }
+
+      // --- Render Loop ---
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // --- Load from endpoint ---
+      loadDRCFromServer(
+        "/view_model_pointcloud_drc/" +
+          encodeURIComponent("{{ folder_name }}")
+      );
+    </script>
+  </body>
+</html>

@@ -1,0 +1,547 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <title>{% block title %}Morphex{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --color-orange: #f72585;
+      --color-pink: #3a0ca3;
+      --color-purple: #7209b7;
+    
+      --color-orange-alpha: #f7258599;
+      --color-pink-alpha: #3a0ca399;
+      --color-purple-alpha: #7209b799;
+
+      --white-alpha-06: rgba(255, 255, 255, 0.06);
+      --white-alpha-10: rgba(255, 255, 255, 0.10);
+      --white-alpha-12: rgba(255, 255, 255, 0.12);
+      --white-alpha-15: rgba(255, 255, 255, 0.15);
+      --white-alpha-80: rgba(255, 255, 255, 0.8);
+
+      --grey-alpha-85: rgba(30, 30, 30, 0.85);
+
+      /* Safe area insets for notches and home indicators */
+      --safe-area-inset-top: env(safe-area-inset-top, 0px);
+      --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-area-inset-left: env(safe-area-inset-left, 0px);
+      --safe-area-inset-right: env(safe-area-inset-right, 0px);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    html {
+      height: 100%;
+      overflow: hidden;
+      box-sizing: border-box;
+      overscroll-behavior: none;
+    }
+
+    body {
+      height: 100%;
+      overflow: hidden;
+      box-sizing: border-box;
+      width: 100%;
+      background-color: black;
+      position: relative;
+      color: white;
+      margin: 0;
+      padding: 0;
+      padding-top: var(--safe-area-inset-top);
+      padding-bottom: var(--safe-area-inset-bottom);
+      padding-left: var(--safe-area-inset-left);
+      padding-right: var(--safe-area-inset-right);
+
+      user-select: none;
+      -webkit-user-select: none; /* Safari */
+      -ms-user-select: none;     /* IE/Edge */
+
+      -webkit-tap-highlight-color: transparent; /* Mobile Safari */
+      -ms-tap-highlight-color: transparent;    /* IE */
+
+      -webkit-focus-ring-color: transparent;    /* Remove focus ring in some browsers */
+      -ms-focus-ring-color: transparent;    /* Remove focus ring in some browsers */
+    }
+
+    .gradient-bg {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      background: radial-gradient(circle at 30% 70%, var(--color-orange), transparent 50%),
+                  radial-gradient(circle at 70% 30%, var(--color-pink), transparent 50%),
+                  radial-gradient(circle at 50% 50%, var(--color-purple), transparent 50%);
+      opacity: 0.8;
+      filter: blur(50px) hue-rotate(0deg);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px;
+      padding-bottom: 0px;
+      z-index: 100;
+      position: relative;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      background: linear-gradient(135deg, var(--color-orange), var(--color-pink), var(--color-purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .menu-button {
+      position: relative;
+      height: 40px;
+      width: 40px;
+      background-color: var(--white-alpha-10);
+      border: none;
+      cursor: pointer;
+      z-index: 101;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      border-radius: 12px;
+      transition: background-color 0.3s ease;
+    }
+
+    .menu-button:hover {
+      background-color: var(--white-alpha-15);
+    }
+
+    .menu-button span {
+      display: block;
+      height: 4px;
+      width: 20px;
+      background-color: white;
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .menu-button.active span:nth-child(1) {
+      transform: translateY(9px) rotate(45deg);
+    }
+
+    .menu-button.active span:nth-child(2) {
+      opacity: 0;
+    }
+
+    .menu-button.active span:nth-child(3) {
+      transform: translateY(-9px) rotate(-45deg);
+    }
+
+    .blob {
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 98%;
+      transform: none;
+      height: 0;
+      width: 0;
+      opacity: 0;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--color-orange-alpha), var(--color-pink-alpha), var(--color-purple-alpha));
+      z-index: 101;
+      transition: all 0.8s cubic-bezier(0.68, -0.6, 0.32, 1.6);
+      opacity: 0;
+      filter: blur(20px);
+      pointer-events: none;
+    }
+
+    .blob.active {
+      top: 50%;
+      left: 50%;
+      right: auto;
+      transform: translate(-50%, -50%);
+      opacity: 1;
+      height: 75vh;
+      width: 75vh;
+      border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+    }
+
+    .menu-card {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.95);
+      width: 300px;
+      background-color: var(--grey-alpha-85);
+      backdrop-filter: blur(16px);
+      border-radius: 24px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      z-index: 102;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      padding: 30px;
+      border: 1px solid var(--white-alpha-12);
+      overflow: hidden;
+    }
+
+    .menu-card.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .menu-title {
+      text-align: center;
+      margin-bottom: 30px;
+      color: white;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      position: relative;
+      padding-bottom: 15px;
+    }
+
+    .menu-title::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--color-orange), var(--color-pink));
+      border-radius: 2px;
+    }
+
+    .menu-options {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .menu-option {
+      padding: 16px 20px;
+      background-color: var(--white-alpha-06);
+      border-radius: 16px;
+      text-align: left;
+      color: white;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid var(--white-alpha-05);
+    }
+
+    .menu-option .icon {
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--white-alpha-80);
+    }
+
+    .menu-option:hover {
+      background-color: var(--white-alpha-10);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .menu-option .label {
+      font-size: 16px;
+    }
+
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(3px);
+      z-index: 60;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+    }
+
+    .overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .content {
+      position: relative;
+      z-index: 10;
+      padding: 20px;
+      height: calc(100% - 81px);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      padding-bottom: calc(20px + var(--safe-area-inset-bottom));
+    }
+
+    .content.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .content h2 {
+      font-size: 28px;
+      margin-bottom: 24px;
+      font-weight: 600;
+      background: linear-gradient(135deg, var(--color-orange), var(--color-pink));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    /* Adjust for mobile navigation bars and notches */
+    @supports (padding-top: constant(safe-area-inset-top)) {
+      body {
+        padding-top: constant(safe-area-inset-top);
+        padding-bottom: constant(safe-area-inset-bottom);
+        padding-left: constant(safe-area-inset-left);
+        padding-right: constant(safe-area-inset-right);
+      }
+      
+      .content {
+        padding-bottom: calc(20px + constant(safe-area-inset-bottom));
+      }
+    }
+
+    @supports (padding-top: env(safe-area-inset-top)) {
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+      
+      .content {
+        padding-bottom: calc(20px + env(safe-area-inset-bottom));
+      }
+    }
+  </style>
+
+  {% block additional_styles %}{% endblock %}
+</head>
+<body>
+  <div class="gradient-bg"></div>
+
+  <div class="header">
+    <h1 class="logo">Morphex</h1>
+    <button class="menu-button">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </div>
+
+  {% block content %}{% endblock %}
+  <div class="blob"></div>
+  <div class="overlay"></div>
+
+  <div class="menu-card">
+    <h2 class="menu-title">Menu</h2>
+    <div class="menu-options" id="menuOptions">
+      <!-- Menu options will be loaded dynamically -->
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const menuButton = document.querySelector('.menu-button');
+      const blob = document.querySelector('.blob');
+      const menuCard = document.querySelector('.menu-card');
+      const overlay = document.querySelector('.overlay');
+      const content = document.querySelector('.content');
+      const menuOptions = document.getElementById('menuOptions');
+      let isOpen = false;
+      let blobInterval = null;
+
+      // Function to handle viewport height adjustments for mobile browsers
+      function adjustForMobileViewport() {
+        // Apply the height to elements that need full viewport height
+        document.body.style.height = `${window.innerHeight}px`;
+        document.querySelector('.overlay').style.height = `${window.innerHeight}px`;
+        document.querySelector('.gradient-bg').style.height = `${window.innerHeight}px`;
+        
+        // Adjust content height to account for header and safe areas
+        const headerHeight = document.querySelector('.header').offsetHeight;
+        const safeAreaBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom');
+        const contentHeight = window.innerHeight - headerHeight;
+        content.style.height = `${contentHeight}px`;
+      }
+      
+      // Call on load, resize, orientation change, and whenever visibility changes
+      adjustForMobileViewport();
+      window.addEventListener('resize', adjustForMobileViewport);
+      window.addEventListener('orientationchange', adjustForMobileViewport);
+      window.addEventListener('load', adjustForMobileViewport);
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          // Small delay to ensure browser UI has settled
+          setTimeout(adjustForMobileViewport, 100);
+        }
+      });
+
+      // Simulated session check - this would be replaced with real session logic
+      {% if 'username' in session %}
+        const isLoggedIn = true;
+      {% else %}
+        const isLoggedIn = false;
+      {% endif %}
+      
+      // Define menu options based on login status
+      const menuItems = isLoggedIn ? 
+        [
+          { icon: 'home', label: 'Home' },
+          { icon: 'create', label: 'Create' },
+          { icon: 'gallery', label: 'Gallery' },
+          { icon: 'help', label: 'Help' },
+          { icon: 'logout', label: 'Logout' },
+        ] : 
+        [
+          { icon: 'home', label: 'Home' },
+          { icon: 'login', label: 'Login' },
+          { icon: 'register', label: 'Register' }
+        ];
+      
+      // Generate menu HTML
+      menuItems.forEach(item => {
+        const menuOption = document.createElement('div');
+        menuOption.className = 'menu-option';
+        menuOption.innerHTML = `
+          <div class="icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              ${getIconPath(item.icon)}
+            </svg>
+          </div>
+          <span class="label">${item.label}</span>
+        `;
+        menuOption.onclick = () => {
+          const icon = item.icon;
+          // Animate menu closing
+          window.location.href = `/${icon}`;
+          toggleMenu();
+        };
+        menuOptions.appendChild(menuOption);
+      });
+      
+      // Icon path generator
+      function getIconPath(iconName) {
+        const icons = {
+          'home': '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline>',
+          'settings': '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>',
+          'user': '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>',
+          'logout': '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>',
+          'login': '<path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line>',
+          'register': '<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line>',
+          'gallery': '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline>',
+          'create': '<path d="M12 20h-7a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v3.5" /><path d="M16 19h6" /><path d="M19 16v6" /><path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />',
+          'help': '<circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line>'
+        };
+        return icons[iconName] || '';
+      }
+
+      function getRandomRadius() {
+        return `${40 + Math.random() * 30}% ${40 + Math.random() * 30}% ${40 + Math.random() * 30}% ${40 + Math.random() * 30}% / 
+                ${40 + Math.random() * 30}% ${40 + Math.random() * 30}% ${40 + Math.random() * 30}% ${40 + Math.random() * 30}%`;
+      }
+
+      function startBlobAnimation() {
+        if (blobInterval) return;
+        blobInterval = setInterval(() => {
+          blob.style.borderRadius = getRandomRadius();
+        }, 800);
+      }
+
+      function stopBlobAnimation() {
+        clearInterval(blobInterval);
+        blobInterval = null;
+      }
+
+      function toggleMenu() {
+        isOpen = !isOpen;
+        menuButton.classList.toggle('active');
+        overlay.classList.toggle('active');
+
+        if (isOpen) {
+          // Hide content immediately
+          content.classList.add('hidden');
+          
+          // Show blob
+          blob.classList.add('active');
+          startBlobAnimation();
+
+          // Wait for blob animation to expand before showing the menu
+          setTimeout(() => {
+            menuCard.classList.add('active');
+          }, 400);
+        } else {
+          menuCard.classList.remove('active');
+
+          // Begin hiding the blob after the menu is hidden
+          setTimeout(() => {
+            blob.classList.remove('active');
+            stopBlobAnimation();
+
+            // Show content again
+            content.classList.remove('hidden');
+
+            // Reset blob shape after it fades out
+            setTimeout(() => {
+              blob.style.borderRadius = '50%';
+            }, 600);
+          }, 200);
+        }
+      }
+
+      menuButton.addEventListener('click', toggleMenu);
+      overlay.addEventListener('click', () => {
+        if (isOpen) toggleMenu();
+      });
+
+      // Additional listeners for mobile browsers
+      window.addEventListener('scroll', () => {
+        // Prevent scrolling when menu is open
+        if (isOpen) {
+          window.scrollTo(0, 0);
+        }
+      });
+
+      // Listen for page visibility changes (browser tab switch, app switching)
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && isOpen) {
+          // Re-calculate positions when returning to the page
+          // with menu open to handle potential UI changes
+          menuCard.style.opacity = '0';
+          setTimeout(() => {
+            menuCard.style.opacity = '1';
+          }, 100);
+        }
+      });
+    });
+  </script>
+
+  {% block additional_scripts %}{% endblock %}
+</body>
+</html>

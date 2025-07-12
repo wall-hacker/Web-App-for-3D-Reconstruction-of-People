@@ -1,0 +1,446 @@
+{% extends "base.html" %}
+
+{% block title %}Morphex - Help{% endblock %}
+
+{% block additional_styles %}
+<style>
+  .help-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .blob-container {
+    --color-orange: #f72585;
+    --color-pink: #3a0ca3;
+    --color-purple: #7209b7;
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin-bottom: 20px;
+  }
+
+  #blob-svg {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .nav-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px 0;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .nav-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.3);
+    margin: 0 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .nav-dot.active {
+    background-color: rgba(255, 255, 255, 0.9);
+    transform: scale(1.2);
+  }
+
+  .help-tip-container {
+    width: 100%;
+    max-width: 340px;
+    background-color: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px;
+    margin-top: 20px;
+    border: 1px solid var(--white-alpha-12);
+    transition: all 0.3s ease;
+    min-height: 150px;
+  }
+
+  .help-tip {
+    display: none;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .help-tip.active {
+    display: block;
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .help-tip-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--color-orange), var(--color-pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .help-tip-content {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 16px;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 768px) {
+    .blob-container {
+      width: 250px;
+      height: 250px;
+    }
+    
+    .help-tip-container {
+      padding: 15px;
+    }
+    
+    .help-tip-title {
+      font-size: 18px;
+    }
+    
+    .help-tip-content {
+      font-size: 14px;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content">
+
+  <div class="help-container">
+    <div class="blob-container">
+      <svg id="blob-svg" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="blobGradientGlass" cx="30%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.8)" />
+            <stop offset="60%" stop-color="rgba(255,255,255,0.5)" />
+            <stop offset="100%" stop-color="rgba(255,255,255,0.3)" />
+          </radialGradient>
+
+          <filter id="innerGlow">
+            <feGaussianBlur in="SourceAlpha" stdDeviation="4" result="blur" />
+            <feComposite in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="glow" />
+            <feFlood flood-color="white" flood-opacity="1" />
+            <feComposite in2="glow" operator="in" />
+            <feComposite in2="SourceGraphic" operator="over" />
+          </filter>
+        </defs>
+
+        <path id="blob-path"
+              fill="url(#blobGradientGlass)"
+              filter="url(#innerGlow)"
+              stroke="rgba(255,255,255,0.35)"
+              stroke-width="1.5" 
+              opacity="1" />
+      </svg>
+    </div>
+    
+    <div class="nav-dots" id="nav-dots"></div>
+    
+    <div class="help-tip-container">
+      <div class="help-tip active" data-tip="1">
+        <h3 class="help-tip-title">Launchpad</h3>
+        <p class="help-tip-content">To begin, head over to the <b>Create</b> tab located in the top right corner of the menu to start your 3D modeling journey.</p>
+      </div>
+      
+      <div class="help-tip" data-tip="2">
+        <h3 class="help-tip-title">Stand Tall</h3>
+        <p class="help-tip-content">For best results, hold your device in a perfectly vertical position. A steady and upright stance ensures better photo alignment.</p>
+      </div>
+      
+      <div class="help-tip" data-tip="3">
+        <h3 class="help-tip-title">Center Stage</h3>
+        <p class="help-tip-content">Make sure your subject is directly centered in the camera frame. Proper framing makes a big difference in model accuracy.</p>
+      </div>
+      
+      <div class="help-tip" data-tip="4">
+        <h3 class="help-tip-title">Ring Master</h3>
+        <p class="help-tip-content">If alignment's tough, turn on <b>Auto Mode</b>. Three circles help: the largest frames the shot, the middle shows tilt, and the smallest tracks the subject. Align them to snap a photo.</p>
+      </div>
+      
+      <div class="help-tip" data-tip="5">
+        <h3 class="help-tip-title">Full Circle</h3>
+        <p class="help-tip-content">Capture four clear images of your subject — one each from the front, left, back, and right. These views help create a full 3D representation.</p>
+      </div>
+      
+      <div class="help-tip" data-tip="6">
+        <h3 class="help-tip-title">Just a Moment</h3>
+        <p class="help-tip-content">Once your photos are uploaded, check the <b>Gallery</b> tab. Your models may appear as Queued or Processing — hang tight, they'll be ready soon.</p>
+      </div>
+      
+      <div class="help-tip" data-tip="7">
+        <h3 class="help-tip-title">All Done</h3>
+        <p class="help-tip-content">Your 3D model is now ready! You can view, download, and share it — your digital creation is all yours to enjoy.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block additional_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Import GSAP and MorphSVGPlugin
+    if (typeof gsap === 'undefined') {
+      const gsapScript = document.createElement('script');
+      gsapScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/gsap.min.js';
+      document.head.appendChild(gsapScript);
+      
+      const morphSVGScript = document.createElement('script');
+      morphSVGScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.13.0/MorphSVGPlugin.min.js';
+      document.head.appendChild(morphSVGScript);
+      
+      // Wait for scripts to load
+      await new Promise(resolve => {
+        const checkGSAP = setInterval(() => {
+          if (typeof gsap !== 'undefined' && gsap.registerPlugin) {
+            clearInterval(checkGSAP);
+            resolve();
+          }
+        }, 100);
+      });
+    }
+    
+    gsap.registerPlugin(MorphSVGPlugin);
+    const blobPath = document.getElementById('blob-path');
+    const navDotsContainer = document.getElementById('nav-dots');
+
+    let shapes = {};
+
+    fetch('/static/shapes.json')
+        .then(res => res.json())
+        .then(data => {
+          shapes = data;
+          totalFrames = Object.keys(shapes).length;
+          createNavDots();
+          blobPath.setAttribute('d', shapes.shape1);
+          showTip(1);
+          updateActiveDot();
+        });
+
+    let currentFrame = 1;
+    let totalFrames = 44;
+    let currentSequence = 1;
+    let autoPlayTimeout = null;
+    let isAnimating = false;
+    let looping = false;
+    let loopFrame = 28;
+
+    const sequences = {
+      1: { start: 1, end: 2 },
+      2: { start: 3, end: 8 },
+      3: { start: 9, end: 15 },
+      4: { start: 16, end: 18 },
+      5: { start: 19, end: 22 },
+      6: { start: 23, end: 27 },
+      7: { start: 28, end: 44 },
+    };
+
+    const helpTips = document.querySelectorAll('.help-tip');
+    const showTip = (tipNumber) => {
+      helpTips.forEach(tip => {
+        tip.classList.remove('active');
+      });
+      const activeTip = document.querySelector(`.help-tip[data-tip="${tipNumber}"]`);
+      if (activeTip) {
+        activeTip.classList.add('active');
+      }
+    };
+
+    const createNavDots = () => {
+      for (let i = 1; i <= Object.keys(sequences).length; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'nav-dot';
+        if (i === 1) dot.classList.add('active');
+        dot.dataset.sequence = i;
+        dot.addEventListener('click', (e) => {
+          if (isAnimating) return;
+          stopLoop();
+          currentSequence = parseInt(e.target.dataset.sequence);
+          currentFrame = sequences[currentSequence].start;
+          playSequence(currentSequence);
+          updateActiveDot();
+          showTip(currentSequence);
+        });
+        navDotsContainer.appendChild(dot);
+      }
+    };
+
+    const updateActiveDot = () => {
+      const dots = document.querySelectorAll('.nav-dot');
+      dots.forEach(dot => {
+        if (parseInt(dot.dataset.sequence) === currentSequence) {
+          dot.classList.add('active');
+        } else {
+          dot.classList.remove('active');
+        }
+      });
+    };
+
+    const stopLoop = () => {
+      looping = false;
+      clearTimeout(autoPlayTimeout);
+    };
+
+    const showFrame = (d) => new Promise(resolve => {
+      blobPath.setAttribute("d", d);
+      setTimeout(resolve, 100);
+    });
+
+    const morphTo = (d) => new Promise(resolve => {
+      gsap.to(blobPath, {
+        duration: 0.5,
+        morphSVG: d,
+        ease: "power2.inOut",
+        onComplete: () => setTimeout(resolve, 500)
+      });
+    });
+
+    const morphToAnimated = (d) => new Promise(resolve => {
+      gsap.timeline({ onComplete: resolve })
+        .to(blobPath, { duration: 0.1, scale: 1.2, transformOrigin: "50% 50%", ease: "back.out(2)" })
+        .to(blobPath, { duration: 0.4, morphSVG: d, ease: "elastic.out(1, 0.5)" }, "-=0.1")
+        .to(blobPath, { duration: 0.4, scale: 1, ease: "power3.out" });
+    });
+
+    const morphAppearFromMiddle = (d) => new Promise(resolve => {
+      gsap.timeline({ onComplete: resolve })
+        .set(blobPath, { scale: 0.2, transformOrigin: "50% 50%" })
+        .to(blobPath, { duration: 0.25, scale: 1.1, ease: "expo.out", morphSVG: d })
+        .to(blobPath, { duration: 0.15, scale: 1, ease: "power2.out", morphSVG: d });
+    });
+
+    const morphToFrame = async (frameIndex) => {
+      if (isAnimating) return;
+      isAnimating = true;
+      let shape = shapes[`shape${frameIndex}`];
+      if (!shape) {
+        isAnimating = false;
+        return;
+      }
+      if (frameIndex >= 23 && frameIndex <= 27) {
+        await morphToAnimated(shape);
+      } else if (frameIndex > 27) {
+        if (frameIndex === 28) {
+          await morphAppearFromMiddle(shape);
+        } else {
+          await showFrame(shape);
+        }
+      } else {
+        await morphTo(shape);
+      }
+      isAnimating = false;
+    };
+
+    const loopSequence = async () => {
+      if (isAnimating || !looping) return;
+      if (loopFrame > 44) loopFrame = 29;
+      await morphToFrame(loopFrame);
+      loopFrame++;
+      if (looping) autoPlayTimeout = setTimeout(loopSequence, 0);
+    };
+
+    const playSequence = async (sequenceIndex) => {
+      if (!sequences[sequenceIndex]) return;
+      stopLoop();
+      currentSequence = sequenceIndex;
+      showTip(sequenceIndex);
+      
+      if (sequenceIndex === 7) {
+        looping = true;
+        loopFrame = 28;
+        loopSequence();
+        return;
+      }
+      
+      const { start, end } = sequences[sequenceIndex];
+      currentFrame = start;
+      while (currentFrame <= end) {
+        await morphToFrame(currentFrame);
+        currentFrame++;
+      }
+    };
+
+    const playCurrentSequence = () => {
+        if (isAnimating && currentSequence !== 7) return;
+        currentFrame = sequences[currentSequence].start;
+        playSequence(currentSequence);
+        updateActiveDot();
+    };
+
+    const nextSequence = () => {
+        if (isAnimating && currentSequence !== 7) return;
+        stopLoop();
+        currentSequence++;
+        if (currentSequence > Object.keys(sequences).length) currentSequence = 1;
+        currentFrame = sequences[currentSequence].start;
+        playSequence(currentSequence);
+        updateActiveDot();
+    };
+
+    const prevSequence = () => {
+        if (isAnimating && currentSequence !== 7) return;
+        stopLoop();
+        currentSequence--;
+        if (currentSequence < 1) currentSequence = Object.keys(sequences).length;
+        currentFrame = sequences[currentSequence].start;
+        playSequence(currentSequence);
+        updateActiveDot();
+    };
+
+    const updateSize = () => {
+        const container = document.querySelector('.blob-container');
+        const size = Math.min(window.innerWidth * 0.8, window.innerHeight * 0.8, 400);
+        container.style.width = `${size}px`;
+        container.style.height = `${size}px`;
+        document.getElementById('blob-svg').style.width = `${size}px`;
+        document.getElementById('blob-svg').style.height = `${size}px`;
+    };
+
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('nav-dot')) return;
+        stopLoop();
+        playCurrentSequence();
+    });
+
+    document.addEventListener('touchstart', (e) => {
+        stopLoop();
+        touchStartX = e.changedTouches[0].screenX;
+    });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    });
+
+    const handleSwipe = () => {
+        const swipeThreshold = 50;
+        if (touchEndX < touchStartX - swipeThreshold) nextSequence();
+        if (touchEndX > touchStartX + swipeThreshold) prevSequence();
+    };
+
+    updateSize();
+    window.addEventListener('resize', updateSize);
+
+    // Start with the first sequence after a short delay
+    setTimeout(() => {
+      playSequence(1);
+    }, 800);
+  });
+</script>
+{% endblock %}

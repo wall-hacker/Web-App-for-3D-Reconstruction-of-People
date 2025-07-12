@@ -1,0 +1,1295 @@
+{% extends "base.html" %}
+
+{% block title %}Morphex - Camera{% endblock %}
+
+{% block additional_styles %}
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+<style>
+    .main-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    #permission-container {
+        position: relative;
+        display: none;
+        width: 100%;
+        max-width: 340px;
+        aspect-ratio: 3 / 4;
+        background-color: var(--grey-alpha-85);
+        backdrop-filter: blur(16px);
+        border-radius: 24px;
+        padding: 32px;
+        border: 1px solid var(--white-alpha-12);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        margin: 0 auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    #permission-container p {
+        font-size: 16px;
+        margin-bottom: 20px;
+        color: white;
+        line-height: 1.5;
+    }
+
+    #uploading-container {
+        position: relative;
+        display: none;
+        width: 100%;
+        max-width: 340px;
+        aspect-ratio: 3 / 4;
+        background-color: var(--grey-alpha-85);
+        backdrop-filter: blur(16px);
+        border-radius: 24px;
+        padding: 32px;
+        border: 1px solid var(--white-alpha-12);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        margin: 0 auto;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+    }
+
+    #uploading-container p {
+        font-size: 16px;
+        margin-bottom: 20px;
+        color: white;
+        line-height: 1.5;
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: conic-gradient(var(--color-orange), var(--color-pink), var(--color-orange));
+        mask: radial-gradient(farthest-side, transparent calc(100% - 4px), black 0);
+        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), black 0);
+        margin-bottom: 15px;
+        animation: spin 1s linear infinite;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    #camera-container {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 3/4;
+        max-width: 340px;
+        background-color: #000;
+        border-radius: 24px;
+        overflow: block;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--white-alpha-12);
+    }
+
+    #camera, #low-quality-video, #pose-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 20px;
+    }
+
+    #low-quality-video {
+        display: none; /* Hidden for processing only */
+    }
+
+    /* Crosshair and CoG Indicator */
+    #crosshair-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 10;
+        display: none;
+    }
+
+    #crosshair {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 40px;
+        height: 40px;
+        transform: translate(-50%, -50%);
+        border: 2px solid rgba(255, 255, 255, 0.7);
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
+
+    #target-circle {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 60px;
+        height: 60px;
+        transform: translate(-50%, -50%);
+        border: 2px solid rgba(255, 255, 255, 0.7);
+        border-radius: 50%;
+        transition: all 0.3s ease;
+    }
+
+    #target-circle.vertical, #crosshair.vertical {
+        background-color: rgba(255, 128, 192, 0.5);
+        box-shadow: 0 0 10px rgba(128, 0, 64, 0.5);
+        border-color: rgba(255, 0, 128, 0.5);
+    }
+
+    #cog-indicator {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border: 2px solid rgba(255, 255, 255, 0.7);
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 11;
+        display: none;
+        pointer-events: none;
+    }
+
+    #cog-indicator.centered {
+        background-color: rgba(255, 128, 192, 0.5);
+        box-shadow: 0 0 10px rgba(128, 0, 64, 0.5);
+        border-color: rgba(255, 0, 128, 0.5);
+    }
+
+    .icon {
+        width: 18px;
+        height: 18px;
+        opacity: 0.8;
+    }
+
+    /* Auto-mode Timer */
+    #auto-timer {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--color-orange-alpha), var(--color-pink-alpha));
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: bold;
+        color: white;
+        z-index: 15;
+        display: none;
+        opacity: 0.9;
+        box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+    }
+
+    /* Camera Controls */
+    .camera-controls {
+        position: relative;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-width: 340px;
+        margin-top: 10px;
+        height: 100px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 30px;
+        z-index: 20;
+        flex-shrink: 1;
+        transition: height 0.8s ease, opacity 0.8s ease;
+    }
+
+    .camera-controls.shrink {
+        height: 0;
+        opacity: 0;
+    }
+
+    /* Circular thumbnail gallery button */
+    #thumbnail-gallery {
+        position: relative;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: rgba(0, 0, 0, 0.5);
+        border: 2px solid rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+    }
+
+    #thumbnail-gallery svg {
+        width: 24px;
+        height: 24px;
+        color: white;
+    }
+
+    #thumbnail-gallery img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* Main shutter button */
+    #btn-take-picture {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        border: 4px solid rgba(255, 255, 255, 0.7);
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+
+    #shutter-inner {
+        width: 90%;
+        height: 90%;
+        border-radius: 50%;
+        background: white;
+        transition: all 0.2s ease;
+    }
+
+    #btn-take-picture:active #shutter-inner {
+        width: 80%;
+        height: 80%;
+    }
+
+    /* Mode switch button */
+    #btn-switch-mode {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background-color: rgba(0, 0, 0, 0.5);
+        border: 2px solid rgba(255, 255, 255, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0;
+    }
+
+    #btn-switch-mode svg {
+        width: 24px;
+        height: 24px;
+        color: white;
+    }
+
+    .btn {
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-weight: 600;
+        font-size: 16px;
+        cursor: pointer;
+        text-decoration: none;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        border: none;
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--color-orange), var(--color-pink));
+        color: white;
+    }
+
+    .btn-secondary {
+        background-color: var(--white-alpha-10);
+        color: white;
+        border: 1px solid var(--white-alpha-15);
+    }
+
+    /* Images Container */
+    .images-container {
+        display: none;
+        flex-wrap: nowrap;
+        gap: 10px;
+        justify-content: center;
+        margin-top: 10px;
+        width: 100%;
+        max-width: 340px;
+    }
+
+    .image-wrapper {
+        position: relative;
+        width: 80px;
+        height: 100px;
+        border-radius: 10px;
+        overflow: hidden;
+        background-color: #000;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--white-alpha-12);
+    }
+
+    .image-wrapper img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .images-container > * {
+        width: calc((100% - 30px) / 4);
+        flex: 0 0 auto;
+    }
+
+    #btn-upload-images {
+        display: none;
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--color-orange), var(--color-pink));
+        color: white;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px); /* for Safari */
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        border: none; /* REMOVE this or use a solid color */
+        outline: none;
+        animation: pulse 2s infinite;
+        cursor: pointer;
+        transition: transform 0.2s ease;
+        overflow: hidden; /* Prevent edge bleeding */
+        position: relative; /* Makes stacking consistent */
+    }
+
+    #btn-upload-images svg {
+        width: 32px;
+        height: 32px;
+        color: white;
+    }
+
+    #btn-upload-images:hover {
+        transform: scale(1.05);
+    }
+
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(247, 37, 133, 0.4); }
+        70% { box-shadow: 0 0 0 10px rgba(247, 37, 133, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(247, 37, 133, 0); }
+    }
+
+    /* Gallery Container Styles */
+    .gallery-container {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 3/4;
+        max-width: 340px;
+        background-color: #000;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--white-alpha-12);
+        display: none;
+        margin: 0 auto;
+    }
+    
+    .gallery-img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        position: absolute;
+        top: 0;
+        left: 0;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .gallery-img.active {
+        opacity: 1;
+    }
+    
+    .gallery-navigation {
+        position: absolute;
+        bottom: 20px;
+        left: 0;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        z-index: 30;
+    }
+    
+    .gallery-nav-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: white;
+        padding: 0;
+    }
+    
+    .gallery-nav-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+    
+    #gallery-counter {
+        font-size: 14px;
+        color: white;
+        padding: 6px 12px;
+        background-color: rgba(0, 0, 0, 0.5);
+        border-radius: 12px;
+    }
+    
+    #gallery-close {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 30;
+        color: white;
+    }
+    
+    #gallery-close svg {
+        width: 20px;
+        height: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content">
+    <div class="main-container">
+        <div id="permission-container">
+            <p>This app needs access to <strong>camera</strong> and <strong>device orientation</strong> to function properly.</p>
+            <button id="request-permission" class="btn btn-primary">Allow Access</button>
+        </div>
+        
+        <div id="camera-container">
+            <video id="camera" playsinline muted></video>
+            <video id="low-quality-video" playsinline muted></video>
+            <canvas id="pose-canvas"></canvas>
+            
+            <!-- Center of Gravity Indicator -->
+            <div id="cog-indicator"></div>
+            
+            <!-- Crosshair Overlay -->
+            <div id="crosshair-overlay">
+                <div id="target-circle"></div>
+                <div id="crosshair"></div>
+            </div>
+            
+            <!-- Auto-mode timer -->
+            <div id="auto-timer">3</div>
+        </div>
+
+        <div id="gallery-container" class="gallery-container">
+            <div class="gallery-navigation">
+                <div id="gallery-counter">1/4</div>
+            </div>
+            <div id="gallery-close">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </div>
+        </div>
+
+        <div class="images-container" id="images-container"></div>
+
+        <div id="uploading-container">
+            <div class="spinner"></div>
+            <p id="uploading-text">Uploading</p>
+        </div>
+    
+        <!-- Camera Controls -->
+        <div class="camera-controls">
+            <!-- Thumbnail Gallery Button -->
+            <div id="thumbnail-gallery">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline>
+                </svg>
+            </div>
+            
+            <!-- Shutter Button -->
+            <button id="btn-take-picture">
+                <div id="shutter-inner"></div>
+            </button>
+
+            <!-- Upload Button -->
+            <button id="btn-upload-images">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+            </button>
+            
+            <!-- Mode Switch Button -->
+            <button id="btn-switch-mode">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="manual-icon">
+                    <path d="M3 7 L3 3 L7 3 M21 7 L21 3 L17 3 M3 17 L3 21 L7 21 M21 17 L21 21 L17 21 M12 8 L12 6 M12 16 L12 18 M8 12 L6 12 M16 12 L18 12 M15.5 12 A3.5 3.5 0 1 1 8.5 12 A3.5 3.5 0 1 1 15.5 12"/>
+                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="auto-icon">
+                    <path d="M12 2 L12 6 M12 18 L12 22 M4.22 4.22 L6.34 6.34 M17.66 17.66 L19.78 19.78 M2 12 L6 12 M18 12 L22 12 M4.22 19.78 L6.34 17.66 M17.66 6.34 L19.78 4.22"/>
+                </svg>
+            </button>
+        </div>
+    </div>    
+</div>
+{% endblock %}
+
+{% block additional_scripts %}
+<script>
+    // DOM elements
+    const btnTakePicture = document.getElementById('btn-take-picture');
+    const btnUploadImages = document.getElementById('btn-upload-images');
+    const btnSwitchMode = document.getElementById('btn-switch-mode');
+    const camera = document.getElementById('camera');
+    const lowQualityVideo = document.getElementById('low-quality-video');
+    const poseCanvas = document.getElementById('pose-canvas');
+    const cameraContainer = document.getElementById('camera-container');
+    const imagesContainer = document.getElementById('images-container');
+    const permissionContainer = document.getElementById('permission-container');
+    const uploadingContainer = document.getElementById('uploading-container');
+    const uploadingText = document.getElementById('uploading-text');
+    const requestPermissionBtn = document.getElementById('request-permission');
+    const crosshairOverlay = document.getElementById('crosshair-overlay');
+    const crosshair = document.getElementById('crosshair');
+    const targetCircle = document.getElementById('target-circle');
+    const cogIndicator = document.getElementById('cog-indicator');
+    const autoTimer = document.getElementById('auto-timer');
+    const cameraControls = document.querySelector('.camera-controls');
+
+    const galleryContainer = document.getElementById('gallery-container');
+    const galleryClose = document.getElementById('gallery-close');
+    const galleryCounter = document.getElementById('gallery-counter');
+    const thumbnailGallery = document.getElementById('thumbnail-gallery');
+
+    const manualIcon = document.querySelector('.manual-icon');
+    const autoIcon = document.querySelector('.auto-icon');
+    
+    // App state
+    const state = {
+        imagesTaken: 0,
+        stream: null,
+        facingMode: 'environment',
+        areOverlaysEnabled: true,
+        poseResults: null,
+        pose: null,
+        poseInitialized: false,
+        scaleX: 1,
+        scaleY: 1,
+        capturedImages: [],
+        isAutoMode: false,
+        isVertical: false,
+        isCentered: false,
+        stableConditionStartTime: null,
+        autoTimerInterval: null,
+        countdownValue: 3,
+        galleryActive: false,
+        currentGalleryIndex: 0,
+    };
+    
+    // Camera resolutions (3:4 ratio, portrait orientation)
+    const aspectRatioResolutions = [
+        { width: 4032, height: 3024 }, // 12.2MP (iPhone)
+        { width: 3264, height: 2448 }, // 8MP
+        { width: 2048, height: 1536 }, // 3MP
+        { width: 1600, height: 1200 }, // 2MP
+        { width: 1280, height: 960 },  // 1.2MP
+        { width: 960, height: 720 },   // 0.7MP
+        { width: 640, height: 480 },   // VGA
+        { width: 320, height: 240 }    // QVGA
+    ];
+    
+    // Update canvas dimensions and scaling factors
+    function updateCanvasDimensions() {
+        const containerWidth = cameraContainer.offsetWidth;
+        const containerHeight = cameraContainer.offsetHeight;
+        
+        poseCanvas.width = containerWidth;
+        poseCanvas.height = containerHeight;
+        
+        if (lowQualityVideo.videoWidth && lowQualityVideo.videoHeight) {
+            state.scaleX = containerWidth / lowQualityVideo.videoWidth;
+            state.scaleY = containerHeight / lowQualityVideo.videoHeight;
+        }
+    }
+
+    
+    // Initialize MediaPipe Pose
+    async function initPose() {
+        if (state.poseInitialized) return;
+        
+        try {
+            state.pose = new Pose({
+                locateFile: (file) =>
+                `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+            });
+
+            state.pose.setOptions({
+                modelComplexity: 0,
+                smoothLandmarks: true,
+                enableSegmentation: true,
+                smoothSegmentation: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            state.pose.onResults((results) => {
+                if (!state.areOverlaysEnabled) return;
+                
+                state.poseResults = {
+                    poseLandmarks: results.poseLandmarks ? JSON.parse(JSON.stringify(results.poseLandmarks)) : null,
+                    segmentationMask: results.segmentationMask,
+                    image: results.image
+                };
+                
+                drawPose();
+            });
+            
+            state.poseInitialized = true;
+        } catch (error) {
+            console.error("Error initializing MediaPipe Pose:", error);
+        }
+    }
+    
+    // Draw pose and calculate center of gravity
+    function drawPose() {
+        if (!state.poseResults || !state.areOverlaysEnabled) return;
+
+        const ctx = poseCanvas.getContext('2d');
+        ctx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+
+        if (state.poseResults.segmentationMask) {
+            calculateAndDrawCoG(state.poseResults.segmentationMask);
+        }
+    }
+
+    // Calculate and display center of gravity
+    function calculateAndDrawCoG(segmentationMask) {
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
+
+        tempCanvas.width = lowQualityVideo.videoWidth;
+        tempCanvas.height = lowQualityVideo.videoHeight;
+        tempCtx.drawImage(segmentationMask, 0, 0, tempCanvas.width, tempCanvas.height);
+
+        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+        const data = imageData.data;
+
+        let totalAlpha = 0;
+        let xSum = 0;
+        let ySum = 0;
+
+        for (let y = 0; y < tempCanvas.height; y++) {
+            for (let x = 0; x < tempCanvas.width; x++) {
+                const index = (y * tempCanvas.width + x) * 4;
+                const alpha = data[index + 3]; // Alpha channel
+                totalAlpha += alpha;
+                xSum += x * alpha;
+                ySum += y * alpha;
+            }
+        }
+
+        if (totalAlpha > 0) {
+            // Calculate center of gravity and scale to display coordinates
+            const cogX = xSum / totalAlpha;
+            const cogY = ySum / totalAlpha;
+            const displayX = cogX * state.scaleX;
+            const displayY = cogY * state.scaleY;
+            
+            // Check if center of gravity is near the center of the screen
+            const screenCenterX = poseCanvas.width / 2;
+            const screenCenterY = poseCanvas.height / 2;
+            const distanceFromCenter = Math.sqrt(
+                Math.pow(displayX - screenCenterX, 2) + 
+                Math.pow(displayY - screenCenterY, 2)
+            );
+            
+            // Within 2% of screen width
+            state.isCentered = distanceFromCenter < (poseCanvas.width * 0.03);
+            
+            // Update CoG indicator
+            cogIndicator.style.display = 'block';
+            cogIndicator.style.left = `${displayX}px`;
+            cogIndicator.style.top = `${displayY}px`;
+            cogIndicator.classList.toggle('centered', state.isCentered);
+            
+            // Check if both conditions are met in auto mode
+            checkAutoConditions();
+        } else {
+            // No person detected
+            cogIndicator.style.display = 'none';
+            state.isCentered = false;
+            resetAutoConditions();
+        }
+    }
+
+    // Process pose detection on each frame
+    async function detectPose() {
+        if (!lowQualityVideo || lowQualityVideo.paused || 
+            lowQualityVideo.ended || !state.areOverlaysEnabled || 
+            !state.poseInitialized) {
+            requestAnimationFrame(detectPose);
+            return;
+        }
+        
+        try {
+            await state.pose.send({ image: lowQualityVideo });
+        } catch (error) {
+            console.error('Error in pose detection:', error);
+        }
+        
+        requestAnimationFrame(detectPose);
+    }
+    
+    // Try to get the camera with the best resolution
+    async function getBestCameraResolution() {
+        // Stop any existing stream
+        if (state.stream) {
+            state.stream.getTracks().forEach(track => track.stop());
+        }
+        
+        // Try each resolution from highest to lowest
+        for (const resolution of aspectRatioResolutions) {
+            try {
+                const constraints = {
+                    video: {
+                        facingMode: state.facingMode,
+                        width: { exact: resolution.width },
+                        height: { exact: resolution.height },
+                    },
+                    audio: false
+                };
+                
+                const s = await navigator.mediaDevices.getUserMedia(constraints);
+                return s;
+            } catch (err) {
+                // Continue to next resolution
+            }
+        }
+        
+        // If all exact constraints fail, try with ideal values
+        try {
+            const constraints = {
+                video: {
+                    facingMode: state.facingMode,
+                    aspectRatio: { ideal: 3/4 },
+                    width: { ideal: aspectRatioResolutions[0].width }
+                },
+                audio: false
+            };
+            
+            return await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (err) {
+            // Last resort: try with minimal constraints
+            return await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: state.facingMode },
+                audio: false
+            });
+        }
+    }
+
+    // Access the user's camera
+    async function getCameraStream() {
+        try {
+            permissionContainer.style.display = 'none';
+            cameraContainer.style.display = 'block';
+            // Get the best resolution stream for the main camera
+            state.stream = await getBestCameraResolution();
+            
+            // Clone the stream for high and low quality feeds
+            const highQualityStream = state.stream.clone();
+            camera.srcObject = highQualityStream;
+            
+            // Create a lower quality stream for pose detection
+            const lowQualityStream = state.stream.clone();
+            const lowQualityTrack = lowQualityStream.getVideoTracks()[0];
+            await lowQualityTrack.applyConstraints({ width: 640, height: 480 });
+            lowQualityVideo.srcObject = lowQualityStream;
+            
+            // Set up the main camera
+            camera.play().catch(err => console.error("Error playing video:", err));
+            permissionContainer.style.display = 'none';
+            
+            // Set up the low quality video for pose detection
+            lowQualityVideo.onloadedmetadata = () => {
+                lowQualityVideo.play();
+                updateCanvasDimensions();
+                initPose().then(detectPose);
+            };
+            
+            // Listen for camera video loaded and resize events
+            camera.onloadedmetadata = updateCanvasDimensions;
+            window.addEventListener('resize', updateCanvasDimensions);
+            
+        } catch (err) {
+            console.error("Error accessing camera:", err);
+            permissionContainer.style.display = 'flex';
+        }
+    }
+
+    // Function to handle device orientation for crosshair
+    function handleOrientation(event) {
+        if (!state.areOverlaysEnabled || event.beta === null || event.gamma === null) return;
+
+        const beta = event.beta; // X-axis rotation (forward/backward tilt)
+        const gamma = event.gamma; // Y-axis rotation (side-to-side tilt)
+        const containerWidth = cameraContainer.offsetWidth;
+        const containerHeight = cameraContainer.offsetHeight;
+
+        // Convert beta and gamma to radians
+        const phi = (beta - 90) * (Math.PI / 180);
+        const theta = gamma * (Math.PI / 180);
+
+        // Spherical to rectangular conversion
+        const x = Math.sin(phi) * Math.cos(theta);
+        const y = Math.sin(phi) * Math.sin(theta);
+
+        // Scale to container dimensions and update crosshair position
+        const offsetX = -(containerWidth / 2) * y;
+        const offsetY = -(containerHeight / 2) * x;
+        crosshair.style.transform = `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`;
+
+        // Check if the device is vertical
+        state.isVertical = Math.abs(Math.abs(beta) - 90) < 3;
+        targetCircle.classList.toggle('vertical', state.isVertical);
+        crosshair.classList.toggle('vertical', state.isVertical);
+        
+        // Check if both conditions are met in auto mode
+        checkAutoConditions();
+    }
+
+    // Check if conditions for auto-capture are met
+    function checkAutoConditions() {
+        if (!state.isAutoMode) return;
+        
+        if (state.isVertical && state.isCentered) {
+            // If conditions just became true, record the time
+            if (!state.stableConditionStartTime) {
+                state.stableConditionStartTime = Date.now();
+                startCountdown();
+            }
+            
+            // Check if conditions have been stable for 5 seconds
+            const elapsedTime = Date.now() - state.stableConditionStartTime;
+            if (elapsedTime >= 3000 && state.imagesTaken < 4) {
+                takePicture();
+                resetAutoConditions();
+            }
+        } else {
+            // Reset if conditions are not met
+            resetAutoConditions();
+        }
+    }
+    
+    // Start the countdown timer
+    function startCountdown() {
+        // Clear any existing interval
+        if (state.autoTimerInterval) {
+            clearInterval(state.autoTimerInterval);
+        }
+        
+        // Reset countdown value
+        state.countdownValue = 3;
+        autoTimer.textContent = state.countdownValue;
+        autoTimer.style.display = 'flex';
+        
+        // Start the interval
+        state.autoTimerInterval = setInterval(() => {
+            state.countdownValue--;
+            autoTimer.textContent = state.countdownValue;
+            
+            if (state.countdownValue <= 0) {
+                clearInterval(state.autoTimerInterval);
+                autoTimer.style.display = 'none';
+            }
+        }, 1000);
+    }
+    
+    // Reset auto mode conditions
+    function resetAutoConditions() {
+        state.stableConditionStartTime = null;
+        if (state.autoTimerInterval) {
+            clearInterval(state.autoTimerInterval);
+            state.autoTimerInterval = null;
+        }
+        autoTimer.style.display = 'none';
+    }
+
+    function switchMode() {
+        if (state.isAutoMode) {
+            state.isAutoMode = false;
+            state.areOverlaysEnabled = false;
+            toggleOverlays();
+            resetAutoConditions();
+        } else {
+            state.isAutoMode = true;
+            state.areOverlaysEnabled = true;
+            toggleOverlays();
+            resetAutoConditions();
+        }
+    }
+
+    // Toggle overlays visibility
+    function toggleOverlays() {
+        crosshairOverlay.style.display = state.areOverlaysEnabled ? 'block' : 'none';
+        cogIndicator.style.display = state.areOverlaysEnabled ? 'block' : 'none';
+        btnTakePicture.style.display = (!state.areOverlaysEnabled && state.imagesTaken < 4) ? 'flex' : 'none';
+        manualIcon.style.display = state.areOverlaysEnabled ? 'none' : 'block';
+        autoIcon.style.display = state.areOverlaysEnabled ? 'block' : 'none';
+    }
+
+    // Function to upload all images to server
+    async function uploadImages() {
+        try {
+            cameraContainer.style.display = 'none';
+            uploadingContainer.style.display = 'flex';
+            cameraControls.style.visibility = 'hidden';
+            if(state.areOverlaysEnabled) {
+                toggleOverlays();
+            }
+
+            // Create FormData object
+            const formData = new FormData();
+            
+            // Add all images to the FormData
+            state.capturedImages.forEach((imageData, index) => {
+                formData.append(`image${index + 1}`, imageData.blob, imageData.filename);
+                formData.append(`width${index + 1}`, String(imageData.dimensions.width));
+                formData.append(`height${index + 1}`, String(imageData.dimensions.height));
+            });
+            
+            formData.append('imageCount', String(state.capturedImages.length));
+            
+            // Update status
+            uploadingText.textContent = 'Uploading images...';
+            
+            // Send all images to the server
+            const response = await fetch('/multiple_upload', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}`);
+            }
+            
+            const result = await response.json();
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            
+            // Update batch status
+            uploadingText.textContent = 'Images uploaded successfully!';
+
+            cameraControls.classList.toggle('shrink');
+            
+            // redirect to gallery page after a few seconds
+            setTimeout(() => {
+                window.location.href = '/gallery'; // Example redirect
+            }, 2000);
+            
+            return result;
+        } catch (error) {
+            console.error('Error uploading images:', error);
+            
+            // Update batch status
+            uploadingText.textContent = 'Failed to upload images. Retrying.';
+            setTimeout(() => {
+                uploadImages()
+            }, 1000);
+            
+            return null;
+        }
+    }
+
+    // Take a picture and save it
+    function takePicture() {
+        if (state.imagesTaken >= 4) return; // Stop once 4 pictures are taken
+        state.imagesTaken++;
+
+        // Get the video track to access the actual stream settings
+        const videoTrack = state.stream.getVideoTracks()[0];
+        const settings = videoTrack.getSettings();
+        
+        // Create a canvas to capture the current video frame at full resolution
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = settings.width || camera.videoWidth;
+        canvas.height = settings.height || camera.videoHeight;
+        ctx.drawImage(camera, 0, 0, canvas.width, canvas.height);
+
+        // Create a thumbnail for display
+        const displayCanvas = document.createElement('canvas');
+        const displayCtx = displayCanvas.getContext('2d');
+        displayCanvas.width = 120;
+        displayCanvas.height = (settings.height / settings.width) * 120;
+        displayCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, 0, displayCanvas.width, displayCanvas.height);
+        
+        // Create image element for the gallery
+        const galleryImg = document.createElement('img');
+        galleryImg.classList.add('gallery-img');
+        galleryImg.src = canvas.toDataURL('image/webp', 0.1);
+        galleryContainer.appendChild(galleryImg);
+
+        // Create image element and wrapper
+        const img = document.createElement('img');
+        img.src = displayCanvas.toDataURL('image/webp', 1.0);
+        
+        // Create a wrapper for the thumbnail
+        const imageWrapper = document.createElement('div');
+        imageWrapper.classList.add('image-wrapper');
+        imageWrapper.appendChild(img);
+        const clickIndex = state.imagesTaken - 1;
+        imageWrapper.addEventListener('click', () => {
+            state.currentGalleryIndex = clickIndex;
+            updateGalleryView();
+        });
+        
+        imagesContainer.appendChild(imageWrapper);
+        
+        // Generate a unique filename with dimensions
+        const timestamp = new Date().getTime();
+        const filename = `image_${timestamp}_${canvas.width}x${canvas.height}.png`;
+        
+        // Convert full-resolution canvas data to PNG blob for upload
+        canvas.toBlob((blob) => {
+            state.capturedImages.push({
+                blob: blob,
+                filename: filename,
+                dimensions: {
+                    width: canvas.width,
+                    height: canvas.height
+                }
+            });
+        }, 'image/webp, 1.0');
+
+        // Update thumbnail gallery button to show the first image
+        const thumbnailImg = document.createElement('img');
+        thumbnailImg.src = displayCanvas.toDataURL('image/webp', 1.0);
+        thumbnailGallery.innerHTML = '';
+        thumbnailGallery.appendChild(thumbnailImg);
+
+        // Check if we've taken 4 images
+        if (state.imagesTaken === 1) {
+            thumbnailGallery.addEventListener('click', toggleGallery);
+        }
+        if (state.imagesTaken === 4) {
+            btnTakePicture.disabled = true;
+            btnTakePicture.style.opacity = '0';
+            btnTakePicture.style.pointerEvents = 'none';
+            btnTakePicture.style.display = 'none';
+
+            btnUploadImages.disabled = false;
+            btnUploadImages.style.opacity = '1';
+            btnUploadImages.style.display = 'flex';
+        }
+    }
+
+    // Function to toggle gallery view
+    function toggleGallery() {
+        state.galleryActive = !state.galleryActive;
+        
+        if (state.galleryActive) {
+            // Hide camera elements
+            cameraContainer.style.display = 'none';
+            cameraControls.style.display = 'none';
+            imagesContainer.style.display = 'flex';
+            
+            // Show gallery
+            galleryContainer.style.display = 'block';
+            
+            
+            // Update gallery with current images
+            updateGalleryView();
+        } else {
+            // Show camera elements
+            cameraContainer.style.display = 'block';
+            cameraControls.style.display = 'flex';
+            imagesContainer.style.display = 'none';
+            
+            // Hide gallery
+            galleryContainer.style.display = 'none';
+        }
+    }
+    
+    // Function to update the gallery view with current images
+    function updateGalleryView() {
+
+        galleryContainer.querySelectorAll('.gallery-img').forEach((img, index) => {
+            // Only show the current image
+            if (index === state.currentGalleryIndex) {
+                img.classList.add('active');
+            } else {
+                img.classList.remove('active');
+            }
+            
+            galleryContainer.appendChild(img);
+        });
+        
+        // Update counter
+        if (state.imagesTaken > 0) {
+            galleryCounter.textContent = `${state.currentGalleryIndex + 1}/${state.imagesTaken}`;
+        }
+    }
+    
+    // Function to navigate to previous image
+    function showPreviousImage() {
+        if (state.currentGalleryIndex > 0) {
+            state.currentGalleryIndex--;
+            updateGalleryView();
+        }
+    }
+    
+    // Function to navigate to next image
+    function showNextImage() {
+        if (state.currentGalleryIndex < state.imagesTaken - 1) {
+            state.currentGalleryIndex++;
+            updateGalleryView();
+        }
+    }
+
+    // Touch events for swiping
+    let touchStartX = 0;
+    let touchEndX = 0;
+    
+    const galleryArea = document.querySelector('.gallery-container');
+    
+    galleryArea.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, {passive: true});
+    
+    galleryArea.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, {passive: true});
+    
+    function handleSwipe() {
+        const swipeThreshold = 50;
+        if (touchEndX < touchStartX - swipeThreshold) {
+            // Swipe left - go to next slide
+            showNextImage();
+        } else if (touchEndX > touchStartX + swipeThreshold) {
+            // Swipe right - go to previous slide
+            showPreviousImage();
+        }
+    }
+
+    // Event listeners
+    btnTakePicture.addEventListener('click', takePicture);
+    btnUploadImages.addEventListener('click', uploadImages);
+    btnSwitchMode.addEventListener('click', switchMode);
+    galleryClose.addEventListener('click', toggleGallery);
+
+    // Handle IOS device orientation permission
+    function handleIOSPermission() {
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            DeviceOrientationEvent.requestPermission()
+                .then((response) => {
+                    if (response === 'granted') {
+                        getCameraStream();
+                        permissionContainer.style.display = 'none';
+                    } else {
+                        console.warn('Camera access denied by user');
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error requesting camera access:', error);
+                });
+        } else {
+            getCameraStream();
+        }
+    }
+
+    // Initialize the app
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Set initial mode to MANUAL
+        state.isAutoMode = false;
+        state.areOverlaysEnabled = false;
+        manualIcon.style.display = 'block';
+        autoIcon.style.display = 'none';
+        toggleOverlays();
+        resetAutoConditions();
+
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        const showPermissionUI = () => {
+            permissionContainer.style.display = 'flex';
+            cameraContainer.style.display = 'none';
+        };
+
+        if (isIOS) {
+            // iOS requires user interaction before accessing camera
+            showPermissionUI();
+            requestPermissionBtn.addEventListener('click', getCameraStream);
+            requestPermissionBtn.addEventListener('click', handleIOSPermission);
+        } else {
+            try {
+                const result = await navigator.permissions.query({ name: 'camera' });
+                console.log('Camera permission result:', result);
+
+                if (result.state === 'granted') {
+                    getCameraStream();
+                } else if (result.state === 'prompt') {
+                    // Show permission request UI for user to trigger getCameraStream
+                    requestPermissionBtn.addEventListener('click', getCameraStream);
+                    showPermissionUI();
+                } else {
+                    // Permission denied
+                    console.warn('Camera access denied');
+                    showPermissionUI();
+                }
+            } catch (err) {
+                // Permissions API not supported or camera permission query failed
+                console.warn('Permissions API not supported or failed', err);
+                // Fallback: try to access the camera on button click
+                requestPermissionBtn.addEventListener('click', getCameraStream);
+                showPermissionUI();
+            }
+        }
+
+        // Initialize device orientation event listener for crosshair
+        if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', handleOrientation);
+        } else {
+            console.warn('Device orientation not supported by this browser');
+        }
+    });
+
+</script>
+{% endblock %}

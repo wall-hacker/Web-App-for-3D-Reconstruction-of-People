@@ -1,0 +1,582 @@
+{% extends "base.html" %}
+
+{% block title %}Morphex - Gallery{% endblock %}
+
+{% block additional_styles %}
+<style>
+  .gallery-container {
+    width: 100%;
+    max-width: 340px;
+    aspect-ratio: 3 / 4;
+    background-color: var(--grey-alpha-85);
+    backdrop-filter: blur(16px);
+    border-radius: 24px;
+    padding: 32px;
+    border: 1px solid var(--white-alpha-12);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .gallery-container:hover {
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+    transform: translateY(-2px);
+  }
+
+  .carousel {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    height: 350px;
+  }
+
+  .carousel-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
+  .model-card {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.5s ease;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .model-card.active {
+    opacity: 1;
+    transform: translateX(0);
+    z-index: 1;
+  }
+
+  .model-card.prev {
+    transform: translateX(-100%);
+  }
+
+  .model-card.next {
+    transform: translateX(100%);
+  }
+  
+  .model-card.processing .action-btn {
+    filter: grayscale(100%);
+    opacity: 0.5;
+    pointer-events: none;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+  }
+
+  .model-thumbnail-wrapper {
+    height: 240px;
+    width: 340px;
+    max-width: 100%;
+    background-color: var(--white-alpha-06);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .model-thumbnail {
+    height: 100%;
+    width: 100%;
+    object-fit: contain;
+    display: block;
+    transition: transform 0.3s ease, filter 0.3s ease, opacity 0.3s ease;
+  }
+    
+  .active .model-thumbnail:hover {
+    transform: scale(1.02);
+  }
+  
+  .model-card.processing .model-thumbnail {
+    filter: grayscale(100%) blur(1px);
+    opacity: 0.3;
+    transition: filter 0.3s ease, opacity 0.3s ease;
+  }
+  
+  /* Prevent hover effects when processing */
+  .model-card.processing.active .model-thumbnail:hover {
+    transform: none;
+  }
+
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    z-index: 5;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+  }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: conic-gradient(var(--color-orange), var(--color-pink), var(--color-orange));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 4px), black 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), black 0);
+    margin-bottom: 15px;
+    animation: spin 1s linear infinite;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .model-info {
+    padding: 15px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .model-actions {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 10px;
+  }
+
+  .action-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--color-orange), var(--color-pink));
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    text-decoration: none;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .action-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    transform: scale(0);
+    transition: transform 0.4s ease;
+  }
+
+  .action-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(127, 79, 206, 0.4);
+  }
+  
+  .action-btn:hover::before {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+
+  .action-btn:active {
+    transform: translateY(1px);
+  }
+
+  .action-btn i {
+    font-size: 18px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .navigation-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+  }
+
+  .nav-btn {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    border: 1px solid var(--white-alpha-15);
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+  }
+
+  .nav-btn:hover {
+    background-color: var(--white-alpha-15);
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+  }
+  
+  .nav-btn:active {
+    transform: scale(0.95);
+  }
+
+  .nav-btn i {
+    font-size: 18px;
+  }
+
+  .page-counter {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .page-counter-display {
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--white-alpha-10);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(4px);
+  }
+  
+  .page-counter-display:hover {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.06));
+  }
+  
+  .page-counter-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 12px;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  
+  .page-counter-input:focus {
+    outline: none;
+  }
+  
+  .page-counter.editing .page-counter-display {
+    opacity: 0;
+  }
+  
+  .page-counter.editing .page-counter-input {
+    opacity: 1;
+    pointer-events: auto;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08));
+    border: 1px solid var(--white-alpha-20);
+  }
+
+  .no-models {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    text-align: center;
+    color: var(--white-alpha-80);
+  }
+
+  .no-models i {
+    font-size: 48px;
+    margin-bottom: 20px;
+    opacity: 0.6;
+  }
+
+  .create-btn {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--color-orange), var(--color-pink));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 20px;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .create-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(127, 79, 206, 0.3);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content">  
+  <div class="gallery-container">
+    {% if folders %}
+      <div class="carousel">
+        <div class="carousel-inner" id="carousel-inner">
+          {% for folder in folders %}
+            <div class="model-card {% if loop.first %}active{% endif %}" id="card-{{ folder }}" data-scan-id="{{ folder }}" data-index="{{ loop.index0 }}">
+              <div class='model-thumbnail-wrapper'>
+                <img class="model-thumbnail" src="{{ url_for('model_thumbnail', folder_name=folder) }}" alt="{{ folder }} thumbnail">
+              </div>
+              <div class="model-info">
+                <div class="model-actions">
+                  <a href="{{ url_for('viewer', folder_name=folder) }}" class="action-btn">
+                    <i class="fas fa-eye"></i>
+                  </a>
+                  <a href="{{ url_for('download_model_pointcloud', folder_name=folder) }}" class="action-btn">
+                    <i class="fas fa-download"></i>
+                  </a>
+                  <form action="{{ url_for('delete_model', folder_name=folder) }}" method="post" onsubmit="return confirm('Are you sure you want to delete this model?');" style="display: inline;">
+                    <button type="submit" class="action-btn">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+      
+      <div class="navigation-controls">
+        <button class="nav-btn prev-btn" id="prev-btn">
+          <i class="fas fa-chevron-left"></i>
+        </button>
+        <div class="page-counter" id="page-counter">
+          <div class="page-counter-display" id="page-counter-display">1/{{ folders|length }}</div>
+          <input type="number" min="1" max="{{ folders|length }}" class="page-counter-input" id="page-counter-input">
+        </div>
+        <button class="nav-btn next-btn" id="next-btn">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    {% else %}
+      <div class="no-models">
+        <i class="fas fa-cube"></i>
+        <p>No 3D models in your gallery yet</p>
+        <a href="{{ url_for('create') }}" class="create-btn">Create a Model</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block additional_scripts %}
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Only run if we have models
+    if (document.querySelector('.carousel-inner')) {
+      const carouselInner = document.getElementById('carousel-inner');
+      const slides = document.querySelectorAll('.model-card');
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      const pageCounter = document.getElementById('page-counter');
+      const pageCounterDisplay = document.getElementById('page-counter-display');
+      const pageCounterInput = document.getElementById('page-counter-input');
+      const totalSlides = slides.length;
+      let currentIndex = 0;
+      
+      // Initial socket connection for status updates
+      const socket = io();
+      
+      // Initial statuses from server
+      socket.on('initial_statuses', (statuses) => {
+        for (const [scanId, status] of Object.entries(statuses)) {
+          updateCardStatus(scanId, status);
+        }
+      });
+      
+      // Real-time status updates
+      socket.on('status_update', (data) => {
+        updateCardStatus(data.scan_id, data.status);
+      });
+      
+      function updateCardStatus(scanId, status) {
+        const card = document.getElementById(`card-${scanId}`);
+        if (!card) return;
+        
+        const thumbnailWrapper = card.querySelector('.model-thumbnail-wrapper');
+        const existingOverlay = thumbnailWrapper.querySelector('.loading-overlay');
+        console.log(`Updating status for ${scanId}: ${status}`);
+        
+        if (status === 'queued' || status === 'processing') {
+          // Apply grayscale effect to the card
+          card.classList.add('processing');
+          
+          if (!existingOverlay) {
+            const overlay = document.createElement('div');
+            overlay.className = 'loading-overlay';
+            
+            // Create status text with capitalized first letter
+            const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+            
+            overlay.innerHTML = `
+              <div class="spinner"></div>
+              <div>${statusText}</div>
+            `;
+            
+            thumbnailWrapper.appendChild(overlay);
+          } else {
+            // Update the message if overlay already exists
+            const statusText = status.charAt(0).toUpperCase() + status.slice(1);
+            const contentDiv = existingOverlay.querySelector('div:not(.spinner)');
+            if (contentDiv) {
+              contentDiv.textContent = statusText;
+            }
+          }
+        } else if (status === 'completed') {
+          // Remove grayscale effect and overlay
+          card.classList.remove('processing');
+          if (existingOverlay) existingOverlay.remove();
+        }
+      }
+      
+      // Function to update slide positions and classes
+      function updateSlides() {
+        slides.forEach((slide, index) => {
+          slide.classList.remove('active', 'prev', 'next');
+          
+          if (index === currentIndex) {
+            slide.classList.add('active');
+          } else if (index === getPrevIndex()) {
+            slide.classList.add('prev');
+          } else if (index === getNextIndex()) {
+            slide.classList.add('next');
+          }
+        });
+        
+        // Update page counter
+        pageCounterDisplay.textContent = `${currentIndex + 1}/${totalSlides}`;
+        pageCounterInput.value = '';
+      }
+      
+      function getPrevIndex() {
+        return (currentIndex - 1 + totalSlides) % totalSlides;
+      }
+      
+      function getNextIndex() {
+        return (currentIndex + 1) % totalSlides;
+      }
+      
+      // Navigate to previous slide
+      function goToPrevSlide() {
+        currentIndex = getPrevIndex();
+        updateSlides();
+      }
+      
+      // Navigate to next slide
+      function goToNextSlide() {
+        currentIndex = getNextIndex();
+        updateSlides();
+      }
+      
+      // Go to specific slide
+      function goToSlide(index) {
+        currentIndex = index;
+        updateSlides();
+      }
+      
+      // Event listeners for navigation buttons
+      prevBtn.addEventListener('click', goToPrevSlide);
+      nextBtn.addEventListener('click', goToNextSlide);
+
+      // Page counter click to show input field
+      pageCounterDisplay.addEventListener('click', () => {
+        pageCounter.classList.add('editing');
+        pageCounterInput.value = '';
+        pageCounterInput.focus();
+      });
+      
+      // Handle input field submission
+      pageCounterInput.addEventListener('blur', handlePageInput);
+      pageCounterInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          handlePageInput();
+          e.preventDefault();
+        } else if (e.key === 'Escape') {
+          pageCounter.classList.remove('editing');
+          e.preventDefault();
+        }
+      });
+      
+      function handlePageInput() {
+        const newIndex = parseInt(pageCounterInput.value, 10);
+        if (newIndex >= 1 && newIndex <= totalSlides) {
+          goToSlide(newIndex - 1);
+        } else {
+          pageCounterInput.value = currentIndex + 1;
+        }
+        pageCounter.classList.remove('editing');
+      }
+      
+      // Touch events for swiping
+      let touchStartX = 0;
+      let touchEndX = 0;
+      
+      const carousel = document.querySelector('.carousel');
+      
+      carousel.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      }, {passive: true});
+      
+      carousel.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+      }, {passive: true});
+      
+      function handleSwipe() {
+        const swipeThreshold = 50;
+        if (touchEndX < touchStartX - swipeThreshold) {
+          // Swipe left - go to next slide
+          goToNextSlide();
+        } else if (touchEndX > touchStartX + swipeThreshold) {
+          // Swipe right - go to previous slide
+          goToPrevSlide();
+        }
+      }
+      
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+          goToPrevSlide();
+        } else if (e.key === 'ArrowRight') {
+          goToNextSlide();
+        }
+      });
+      
+      // Initialize carousel
+      updateSlides();
+    }
+  });
+</script>
+{% endblock %}

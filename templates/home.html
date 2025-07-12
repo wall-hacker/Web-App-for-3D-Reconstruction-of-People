@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}Morphex - Turn Photos Into 3D{% endblock %}
+
+{% block additional_styles %}
+<style>
+  .hero-title {
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--color-orange), var(--color-pink));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .model-showcase {
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    max-width: 260px; /* Reduced from 320px */
+    height: 260px; /* Reduced from 320px */
+    perspective: 1200px;
+  }
+
+
+  .model-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    animation: rotate 20s infinite linear;
+  }
+
+  @keyframes rotate {
+    from { transform: rotateY(0deg); }
+    to { transform: rotateY(-360deg); }
+  }
+
+  .model-frame {
+    position: absolute;
+    width: 160px; /* Reduced from 200px */
+    height: 200px; /* Reduced from 240px */
+    top: 50%;
+    left: 50%;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    border: 2px solid var(--white-alpha-15);
+    background: linear-gradient(145deg, var(--color-orange-alpha), var(--color-purple-alpha));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+
+  .model-frame:nth-child(1) {
+    transform: translate3d(-50%, -50%, 0) rotateY(0deg) translateZ(120px); /* Reduced from 140px */
+  }
+
+  .model-frame:nth-child(2) {
+    transform: translate3d(-50%, -50%, 0) rotateY(90deg) translateZ(120px); /* Reduced from 140px */
+  }
+
+  .model-frame:nth-child(3) {
+    transform: translate3d(-50%, -50%, 0) rotateY(180deg) translateZ(120px); /* Reduced from 140px */
+  }
+
+  .model-frame:nth-child(4) {
+    transform: translate3d(-50%, -50%, 0) rotateY(270deg) translateZ(120px); /* Reduced from 140px */
+  }
+
+  .model-icon {
+    font-size: 46px; /* Reduced from 56px */
+    color: white;
+    opacity: 0.9;
+    margin-bottom: 12px; /* Reduced from 16px */
+  }
+
+  .model-title {
+    font-size: 16px; /* Reduced from 18px */
+    font-weight: 600;
+    color: white;
+    margin-bottom: 8px;
+  }
+
+  .model-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    padding: 8px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .start-creating {
+    text-align: center;
+  }
+
+  .user-action-section {
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+    background: var(--white-alpha-5);
+    border-radius: 24px;
+    border: 1px solid var(--white-alpha-10);
+    backdrop-filter: blur(10px);
+    text-align: center;
+    justify-content: center;
+    margin-bottom: 30px; /* Add space between sections */
+  }
+
+  .start-creating p {
+    font-size: 16px;
+    color: var(--white-alpha-80);
+    margin-bottom: 20px;
+    max-width: 280px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .cta-buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+  }
+
+  .btn {
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+  }
+
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--color-orange), var(--color-pink));
+    color: white;
+  }
+
+  .btn-secondary {
+    background-color: var(--white-alpha-10);
+    color: white;
+    border: 1px solid var(--white-alpha-15);
+  }
+
+  .homepage-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 340px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="content">
+  <div class="homepage-container">
+    <!-- Model Showcase - Displayed for all users -->
+    <div class="user-action-section">
+      <div class="model-showcase">
+        <div class="model-container">
+          <div class="model-frame">
+            <div class="model-icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+            </div>
+            <h3 class="model-title">Upload Photos</h3>
+          </div>
+          <div class="model-frame">
+            <div class="model-icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                <polyline points="2 17 12 22 22 17"></polyline>
+                <polyline points="2 12 12 17 22 12"></polyline>
+              </svg>
+            </div>
+            <h3 class="model-title">Generate Model</h3>
+          </div>
+          <div class="model-frame">
+            <div class="model-icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+              </svg>
+            </div>
+            <h3 class="model-title">View & Interact</h3>
+          </div>
+          <div class="model-frame">
+            <div class="model-icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </div>
+            <h3 class="model-title">Download & Share</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="user-action-section">
+      {% if 'username' in session %}
+        <!-- Logged-in User Experience -->
+        <div class="start-creating">
+          <h2>Welcome back, {{ session['username'] }}</h2>
+          <p> Continue creating amazing 3D models or view your gallery</p>
+          
+          <div class="cta-buttons">
+            <a href="{{ url_for('create') }}" class="btn btn-primary">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h-7a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v3.5" />
+                <path d="M16 19h6" />
+                <path d="M19 16v6" />
+                <path d="M9 13a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+              </svg>
+              Create
+            </a>
+            
+            <a href="{{ url_for('gallery') }}" class="btn btn-secondary">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                <polyline points="21 15 16 10 5 21"></polyline>
+              </svg>
+              Gallery
+            </a>
+          </div>
+        </div>
+      {% else %}
+        <!-- Guest User Experience -->
+        <div class="start-creating">
+          <h2>Ready to create your own?</h2>
+          <p>Transform your photos into amazing 3D models in just a few taps</p>
+          
+          <div class="cta-buttons">
+            <a href="{{ url_for('login') }}" class="btn btn-primary">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                <polyline points="10 17 15 12 10 7"></polyline>
+                <line x1="15" y1="12" x2="3" y2="12"></line>
+              </svg>
+              Login
+            </a>
+            <a href="{{ url_for('register') }}" class="btn btn-secondary">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="23" y1="11" x2="17" y2="11"></line>
+              </svg>
+              Register
+            </a>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block additional_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // Add any home page specific scripts here
+  });
+</script>
+{% endblock %}
